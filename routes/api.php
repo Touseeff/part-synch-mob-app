@@ -21,25 +21,40 @@ Route::post('/signup', [AuthController::class, 'signup']);
 Route::get('/otp-verification',[AuthController::class,'otpVerification']);
 
 
-Route::post('/signin', [AuthController::class, 'signin']);
 
+Route::post('/signin', [AuthController::class, 'signin']);
 
 Route::post('/forgot_password',[AuthController::class,'forgotPassword']);
 
-Route::post('/logout',[AuthController::class,'logout']);
 
 
 
-// 🔹 Protected Routes (Requires Sanctum Authentication)
-Route::middleware([
-    EnsureFrontendRequestsAreStateful::class, 
-    'auth:sanctum'
-])->group(function () {
-    Route::get('/admin/dashboard', [DashboardController::class, 'adminDashboard'])
-        ->middleware(CheckRole::class . ':1'); // Only Admin (role_id = 1)
 
-    Route::get('/user/dashboard', [DashboardController::class, 'userDashboard'])
-        ->middleware(CheckRole::class . ':2'); // Only User (role_id = 2)
 
-    Route::post('/logout', [AuthController::class, 'logout']); // Logout
+// Authenticated Routes (using Sanctum)
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // Admin Routes
+    Route::middleware('role_id:1')->group(function () {
+        Route::get('admin/dashboard', function() {
+            return response()->json(['message' => 'Admin Dashboard']);
+        });
+    });
+
+    // Vendor Routes
+    Route::middleware('role_id:2')->group(function () {
+        Route::get('vendor/dashboard', function() {
+            return response()->json(['message' => 'Vendor Dashboard']);
+        });
+    });
+
+    // User Routes
+    Route::middleware('role_id:3')->group(function () {
+        Route::get('user/dashboard', function() {
+            return response()->json(['message' => 'User Dashboard']);
+        });
+    });
+
+    // Logout Route
+    Route::post('/logout',[AuthController::class,'logout']);
 });

@@ -2,11 +2,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -31,7 +29,7 @@ class AuthController extends Controller
             if ($accountType === 'business') {
                 $rules['business_name'] = 'required|string|max:150';
                 $rules['business_type'] = 'required|string|max:50';
-                $rules['address'] = 'required';
+                $rules['address']       = 'required';
             }
 
             // Validate input
@@ -41,7 +39,7 @@ class AuthController extends Controller
                 return response()->json([
                     'status'  => false,
                     'message' => 'Validation Error',
-                    'error'  => $validate->errors()->all(),
+                    'error'   => $validate->errors()->all(),
                 ], 422);
             }
 
@@ -55,7 +53,8 @@ class AuthController extends Controller
             }
 
             // Generate OTP
-            $otp = rand(1000, 9999);
+           $otp_number = rand(1000, 9999);
+           $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
 
             // Create new user
             $user               = new User();
@@ -70,11 +69,11 @@ class AuthController extends Controller
                 $user->role_id       = 2;
                 $user->business_name = $request->business_name;
                 $user->business_type = $request->business_type;
-                $user->address = $request->address;
+                $user->address       = $request->address;
             }
             // $token = $user->createToken('API Token')->plainTextToken;
             $user->save();
-            Mail::to($user->email)->send(new OtpMail($otp));
+            // Mail::to($user->email)->send(new OtpMail($otp));
             // Mail::to($request->email)->send(new OtpMail, $user);
 
             return response()->json([
@@ -96,212 +95,117 @@ class AuthController extends Controller
      * Otp Verification.
      */
 
-     public function otpVerification(Request $request)
-     {
-         try {
-             // Validate request
-             $validator = Validator::make($request->all(), [
-                 'otp' => 'required|digits:4', 
-             ]);
-     
-             if ($validator->fails()) {
-                 return response()->json([
-                     'status' => false,
-                     'message' => 'Validation failed',
-                     'error' => $validator->errors(),
-                 ], 422);
-             }
-     
-             // Find user with the given OTP
-             $otpCheck = User::where('otp', $request->otp)->first();
-     
-             if ($otpCheck) {
-                $otpCheck->otp = Null;
+    public function otpVerification(Request $request)
+    {
+        try {
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'otp' => 'required|digits:4',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Validation failed',
+                    'error'   => $validator->errors(),
+                ], 422);
+            }
+
+            // Find user with the given OTP
+            $otpCheck = User::where('otp', $request->otp)->first();
+
+            if ($otpCheck) {
+                $otpCheck->otp    = null;
                 $otpCheck->status = 'active';
                 $otpCheck->save();
-                if($otpCheck){
+                if ($otpCheck) {
                     return response()->json([
-                        'status' => true,
+                        'status'  => true,
                         'message' => 'OTP verified successfully.',
-                        'user' => $otpCheck,
-                    ]);
+                        'user'    => $otpCheck,
+                    ], 200);
                 }
-              
-             } else {
-                 return response()->json([
-                     'status' => false,
-                     'message' => 'Invalid OTP Or Expire. Please check your email and try again.',
-                 ], 404);
-             }
-         } catch (\Exception $e) {
-             return response()->json([
-                 'status' => false,
-                 'message' => 'Something went wrong. Please try again later.',
-                 'error' => $e->getMessage(),
-             ], 500);
-         }
-     }
-     
 
-    /**
-     * Login Form.
-     */
-    // public function signin(Request $request)
-    // {
-
-    //     try {
-
-    //         $validator = Validator::make($request->all(), [
-    //             'email'    => 'required|email',
-    //             'password' => 'required',
-    //         ]);
-
-    //         if ($validator->fails()) {
-    //             return response()->json([
-    //                 'status'  => false,
-    //                 'message' => 'Validation failed',
-    //                 'error'  => $validator->errors()->all(),
-    //             ], 422);
-    //         }
-
-    //         $user = User::where('email', $request->email)->first();
-
-    //         if (! $user || ! Hash::check($request->password, $user->password)) {
-    //             return response()->json([
-    //                 'status'  => false,
-    //                 'message' => 'Pleae check Email or Password',
-    //             ], 401);
-    //         }
-
-    //         $token = $user->createToken('API Token')->plainTextToken;
-
-    //         return response()->json([
-    //             'status'  => true,
-    //             'message' => 'Login successful',
-    //             'user'    => [
-    //                 'id'    => $user->id,
-    //                 'name'  => $user->name,
-    //                 'email' => $user->email,
-    //                 'role'  => $user->role,
-    //             ],
-    //             'users'    => $user,
-    //             'token'   => $token,
-    //         ], 200);
-
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status'  => false,
-    //             'message' => "Something went wrong",
-    //             'error'   => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
-
-
-
-//     public function signin(Request $request)
-// {
-//     try {
-//         // Validate request
-//         $validator = Validator::make($request->all(), [
-//             'email'    => 'required|email',
-//             'password' => 'required',
-//         ]);
-
-//         if ($validator->fails()) {
-//             return response()->json([
-//                 'status'  => false,
-//                 'message' => 'Validation failed',
-//                 'errors'  => $validator->errors()->all(),
-//             ], 422);
-//         }
-
-//         // Find user by email
-//         $user = User::where('email', $request->email)->first();
-
-//         // Check if user exists and password matches
-//         if (! $user || ! Hash::check($request->password, $user->password)) {
-//             return response()->json([
-//                 'status'  => false,
-//                 'message' => 'Please check your Email or Password',
-//             ], 401);
-//         }
-
-//         // Delete old tokens
-//         $user->tokens()->delete();
-
-//         // Generate new token
-//         // $token = $user->createToken('API Token')->plainTextToken;
-
-//         // Set the dashboard route based on role_id
-//         $dashboard = $user->role_id == 1 ? 'admin/dashboard' : 'user/dashboard';
-
-//         return response()->json([
-//             'status'  => true,
-//             'message' => 'Login successful',
-//             'user'    => [
-//                 'id'       => $user->id,
-//                 'name'     => $user->name,
-//                 'email'    => $user->email,
-//                 'role'     => $user->role_id,
-//                 'dashboard'=> $dashboard,
-//             ],
-//             // 'token'   => $token,
-//         ], 200);
-
-//     } catch (\Exception $e) {
-//         return response()->json([
-//             'status'  => false,
-//             'message' => "Something went wrong",
-//             'error'   => $e->getMessage(),
-//         ], 500);
-//     }
-// }
-
-
-public function login(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'email'    => 'required|email',
-        'password' => 'required',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'status'  => false,
-            'message' => 'Validation failed',
-            'errors'  => $validator->errors()->all(),
-        ], 422);
+            } else {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invalid OTP Or Expire. Please check your email and try again.',
+                ], 404);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong. Please try again later.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    $user = User::where('email', $request->email)->first();
+    public function signin(Request $request)
+    {
+        try {
+            // Validate the incoming request data
+            $validator = Validator::make($request->all(), [
+                'email'    => 'required|email',
+                'password' => 'required',
+            ]);
 
-    if (! $user || ! Hash::check($request->password, $user->password)) {
-        return response()->json([
-            'status'  => false,
-            'message' => 'Invalid Email or Password',
-        ], 401);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Validation failed',
+                    'errors'  => $validator->errors()->all(),
+                ], 422);
+            }
+
+            // Retrieve the user by email
+            $user = User::where('email', $request->email)->first();
+
+            if (! $user) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invalid Email or Password',
+                ], 401);
+            }
+
+            // Check if the user's OTP is not null
+            if ($user->otp !== null) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Your OTP is not verified. Please verify your OTP first.',
+                ], 401);
+            }
+
+            // $otp = rand(1000, 9999);
+            // $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
+
+            // Verify the password
+            if (! Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invalid Email or Password',
+                ], 401);
+            }
+
+            // Create a token for the authenticated user
+            $token = $user->createToken('API Token')->plainTextToken;
+
+            return response()->json([
+                'status'     => true,
+                'token'      => $token,
+                'token_type' => 'Bearer',
+                'message'    => 'Login successful',
+                'user'       => $user,
+            ], 200);
+        } catch (\Exception $e) {
+            // Handle any unexpected errors
+            return response()->json([
+                'status'  => false,
+                'message' => 'An error occurred during the login process.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
-
-    // 🔹 Ensure User is Authenticated
-    // auth()->login($user);
-
-    // 🔹 Create Token for the Authenticated User
-    $token = $user->createToken('API Token')->plainTextToken;
-
-    return response()->json([
-        'status'  => true,
-        'message' => 'Login successful',
-        'user'    => [
-            'id'    => $user->id,
-            'name'  => $user->first_name,
-            'email' => $user->email,
-            'role'  => $user->role_id,
-        ],
-        'token'   => $token,
-    ], 200);
-}
 
     /**
      * Show the form for creating a new resource.
