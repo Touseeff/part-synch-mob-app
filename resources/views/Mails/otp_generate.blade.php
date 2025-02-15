@@ -38,7 +38,7 @@
     <div class="container">
         <h2>Verify Your Account</h2>
         <p>Use the OTP below to complete your verification process:</p>
-        <div class="otp">{{ $otp }}</div>
+        <div class="otp">{{ $data['otp'] }}</div>
         <p>Please do not share this code with anyone.</p>
         <div class="footer">
             <p>Thank you,</p>

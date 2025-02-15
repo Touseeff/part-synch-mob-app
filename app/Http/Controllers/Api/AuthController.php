@@ -2,9 +2,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ForgotPasswordMail;
+use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -14,11 +17,14 @@ class AuthController extends Controller
      */
     public function signup(Request $request)
     {
+
+        // return "...................######### SignUp is for maintenance ########## .......................";
+
         try {
             $accountType = ! empty($request->business_type) ? 'business' : 'user';
 
             $rules = [
-                'full_name'    => 'required|string|max:100',
+                // 'full_name'    => 'required|string|max:100',
                 'email'        => 'required|email|unique:users,email',
                 'password'     => 'required|min:6',
                 'phone_number' => 'required',
@@ -30,18 +36,16 @@ class AuthController extends Controller
                 $rules['address']       = 'required';
             }
 
-         
             $validate = Validator::make($request->all(), $rules);
 
             if ($validate->fails()) {
                 return response()->json([
-                    'status'  => false,
-                   'data'=>[],
-                    'error'   => $validate->errors()->all(),
+                    'status' => false,
+                    'data'   => [],
+                    'error'  => $validate->errors()->all(),
                 ]);
             }
 
-        
             if (User::where('email', $request->email)->exists()) {
                 return response()->json([
                     'status' => false,
@@ -50,12 +54,11 @@ class AuthController extends Controller
                 ]);
             }
 
-         
-           $otp_number = rand(1000, 9999);
-           $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
+            $otp_number = rand(1000, 9999);
+            $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
 
             $user               = new User();
-            $user->role_id      = 3;
+            $user->role_id      = 3; // Default role for users
             $user->first_name   = $request->full_name;
             $user->email        = $request->email;
             $user->password     = Hash::make($request->password);
@@ -63,39 +66,67 @@ class AuthController extends Controller
             $user->otp          = $otp;
 
             if ($accountType === 'business') {
-                $user->role_id       = 2;
+                $user->role_id       = 2; // Role for vendors
                 $user->business_name = $request->business_name;
                 $user->business_type = $request->business_type;
                 $user->address       = $request->address;
             }
-            // $token = $user->createToken('API Token')->plainTextToken;
+
             $user->save();
-            // Mail::to($user->email)->send(new OtpMail($otp));
-            // Mail::to($request->email)->send(new OtpMail, $user);
+
+            // Prepare data for admin email
+            $data = [
+                'full_name'    => $user->first_name,
+                'email'        => $user->email,
+                'phone_number' => $user->phone_number,
+            ];
+
+            if ($accountType === 'business') {
+                $data['business_name'] = $user->business_name;
+                $data['business_type'] = $user->business_type;
+                $data['address']       = $user->address;
+            }
+
+            Mail::to($user->email)->send(new OtpMail(
+                ['otp' => $otp],
+                'Mails.otp_generate',
+                'Your OTP Code'
+            ));
+            if ($accountType === 'business') {
+                Mail::to('tauseefdevelopment000@gmail.com')->send(new OtpMail(
+                    $data,
+                    'Mails.new_user_mail',
+                    'New Vedor Registered'
+                ));
+            } else {
+                Mail::to('tauseefdevelopment000@gmail.com')->send(new OtpMail(
+                    $data,
+                    'Mails.new_user_mail',
+                    'New User Registered'
+                ));
+            }
 
             return response()->json([
                 'status'  => true,
-                'message' => 'Record Inserted Successfully',
                 'data'    => $user,
-                // 'token'=>$token,
+                'message' => 'Record Inserted Successfully',
             ], 201);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => false,
-                'data'=>[],
-                'error'   => $e->getMessage(),
+                'status' => false,
+                'data'   => [],
+                'error'  => $e->getMessage(),
             ]);
         }
     }
-
     /**
      * Otp Verification.
      */
-
     public function otpVerification(Request $request)
     {
         try {
-          
+
             $validator = Validator::make($request->all(), [
                 'otp' => 'required|digits:4',
             ]);
@@ -103,13 +134,12 @@ class AuthController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status'  => false,
-                    'data'=>[],
+                    'data'    => [],
                     'message' => 'Validation failed',
                     'error'   => $validator->errors(),
                 ]);
             }
 
-           
             $otpCheck = User::where('otp', $request->otp)->first();
 
             if ($otpCheck) {
@@ -119,7 +149,7 @@ class AuthController extends Controller
                 if ($otpCheck) {
                     return response()->json([
                         'status'  => true,
-                        'data'=>[],
+                        'data'    => [],
                         'message' => 'OTP verified successfully.',
                         'user'    => $otpCheck,
                     ]);
@@ -128,34 +158,36 @@ class AuthController extends Controller
             } else {
                 return response()->json([
                     'status'  => false,
-                    'data'=>[],
+                    'data'    => [],
                     'message' => 'Invalid OTP Or Expire. Please check your email and try again.',
                 ]);
             }
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => false,
-                'data'=>[],
-                'error'   => $e->getMessage(),
+                'status' => false,
+                'data'   => [],
+                'error'  => $e->getMessage(),
             ]);
         }
     }
-
+    /**
+     * Registration .
+     */
     public function signin(Request $request)
     {
         try {
-      
+
             $validator = Validator::make($request->all(), [
-                'email'    => 'required|email',
-                'password' => 'required',
-                'web_type' => 'required'
+                'email'     => 'required|email',
+                'password'  => 'required',
+                'web_token' => 'required',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status'  => false,
-                    'data'=>[],
-                    'errors'  => $validator->errors()->all(),
+                    'status' => false,
+                    'data'   => [],
+                    'errors' => $validator->errors()->all(),
                 ]);
             }
 
@@ -164,74 +196,92 @@ class AuthController extends Controller
             if (! $user) {
                 return response()->json([
                     'status'  => false,
-                    'data'=>[],
+                    'data'    => [],
                     'message' => 'Invalid Email or Password',
                 ]);
             }
 
-        
             if ($user->otp !== null) {
                 return response()->json([
                     'status'  => false,
-                    'data'=>[],
+                    'data'    => [],
                     'message' => 'Your OTP is not verified. Please verify your OTP first.',
                 ]);
             }
 
-          
             if (! Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'status'  => false,
-                    'data'=>[],
+                    'data'    => [],
                     'message' => 'Invalid Email or Password',
                 ]);
             }
+            if ($user) {
+                $user->status   = 'active';
+                $user->web_type = $request->web_token;
+                $user->save();
+            }
 
-       
             $token = $user->createToken('API Token')->plainTextToken;
 
             return response()->json([
                 'status'     => true,
+                'user'       => $user,
                 'token'      => $token,
-                'data'=>[],
+                'data'       => [],
                 'token_type' => 'Bearer',
                 'message'    => 'Login successful',
-                'user'       => $user,
+
             ]);
         } catch (\Exception $e) {
             // Handle any unexpected errors
             return response()->json([
-                'status'  => false,
-                'data'=>[],
-                'error'   => $e->getMessage(),
+                'status' => false,
+                'data'   => [],
+                'error'  => $e->getMessage(),
             ]);
         }
     }
-
     /**
-     * Show the form for creating a new resource.
+     * Forgot Password Users.
      */
-    public function create()
+    public function forgotPassword(Request $request)
     {
-        //
-    }
+        try {
+            // Validate input
+            $request->validate([
+                'email' => 'required|email|exists:users,email',
+            ]);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+            $user = User::where('email', $request->email)->first();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+            if (! $user) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'User not found',
+                ], 404);
+            }
 
+            if ($user) {
+                $token_verification = $user->first_name . rand(1000, 9999);
+                $user->password     = Hash::make($token_verification);
+                $user->save();
+
+                Mail::to($user->email)->send(new ForgotPasswordMail($user));
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'OTP sent successfully to your email.',
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
     /**
      * Show the form for editing the specified resource.
      */
@@ -239,7 +289,6 @@ class AuthController extends Controller
     {
         //
     }
-
     /**
      * Update the specified resource in storage.
      */

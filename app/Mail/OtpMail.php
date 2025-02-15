@@ -5,52 +5,26 @@ namespace App\Mail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class OtpMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
+    public $data;
+    public $viewName;
+    public $subject;
 
-     public $otp;
-    public function __construct($otp)
+    public function __construct($data, $viewName, $subject)
     {
-        $this->otp = $otp;
+        $this->data = $data;
+        $this->viewName = $viewName;
+        $this->subject = $subject;
     }
 
-    /**
-     * Get the message envelope.
-     */
-    public function envelope(): Envelope
+    public function build()
     {
-        return new Envelope(
-            subject: 'OTP verification ',
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'Mails.otp_generate',
-            with: ['otp_code' => $this->otp]
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
+        return $this->subject($this->subject)
+                    ->view($this->viewName, ['data' => $this->data]);
     }
 }
