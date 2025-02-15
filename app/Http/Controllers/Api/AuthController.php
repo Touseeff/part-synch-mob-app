@@ -17,7 +17,6 @@ class AuthController extends Controller
         try {
             $accountType = ! empty($request->business_type) ? 'business' : 'user';
 
-            // Define validation rules
             $rules = [
                 'full_name'    => 'required|string|max:100',
                 'email'        => 'required|email|unique:users,email',
@@ -25,38 +24,36 @@ class AuthController extends Controller
                 'phone_number' => 'required',
             ];
 
-            // Add business-specific fields if it's a business account
             if ($accountType === 'business') {
                 $rules['business_name'] = 'required|string|max:150';
                 $rules['business_type'] = 'required|string|max:50';
                 $rules['address']       = 'required';
             }
 
-            // Validate input
+         
             $validate = Validator::make($request->all(), $rules);
 
             if ($validate->fails()) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Validation Error',
+                   'data'=>[],
                     'error'   => $validate->errors()->all(),
-                ], 422);
+                ]);
             }
 
-            // Check if email already exists
+        
             if (User::where('email', $request->email)->exists()) {
                 return response()->json([
                     'status' => false,
-                    'error'  => 'Email already exists',
                     'data'   => [],
-                ], 409);
+                    'error'  => 'Email already exists',
+                ]);
             }
 
-            // Generate OTP
+         
            $otp_number = rand(1000, 9999);
            $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
 
-            // Create new user
             $user               = new User();
             $user->role_id      = 3;
             $user->first_name   = $request->full_name;
@@ -85,9 +82,9 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Something went wrong',
+                'data'=>[],
                 'error'   => $e->getMessage(),
-            ], 500);
+            ]);
         }
     }
 
@@ -98,7 +95,7 @@ class AuthController extends Controller
     public function otpVerification(Request $request)
     {
         try {
-            // Validate request
+          
             $validator = Validator::make($request->all(), [
                 'otp' => 'required|digits:4',
             ]);
@@ -106,12 +103,13 @@ class AuthController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status'  => false,
+                    'data'=>[],
                     'message' => 'Validation failed',
                     'error'   => $validator->errors(),
-                ], 422);
+                ]);
             }
 
-            // Find user with the given OTP
+           
             $otpCheck = User::where('otp', $request->otp)->first();
 
             if ($otpCheck) {
@@ -121,89 +119,92 @@ class AuthController extends Controller
                 if ($otpCheck) {
                     return response()->json([
                         'status'  => true,
+                        'data'=>[],
                         'message' => 'OTP verified successfully.',
                         'user'    => $otpCheck,
-                    ], 200);
+                    ]);
                 }
 
             } else {
                 return response()->json([
                     'status'  => false,
+                    'data'=>[],
                     'message' => 'Invalid OTP Or Expire. Please check your email and try again.',
-                ], 404);
+                ]);
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Something went wrong. Please try again later.',
+                'data'=>[],
                 'error'   => $e->getMessage(),
-            ], 500);
+            ]);
         }
     }
 
     public function signin(Request $request)
     {
         try {
-            // Validate the incoming request data
+      
             $validator = Validator::make($request->all(), [
                 'email'    => 'required|email',
                 'password' => 'required',
+                'web_type' => 'required'
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'Validation failed',
+                    'data'=>[],
                     'errors'  => $validator->errors()->all(),
-                ], 422);
+                ]);
             }
 
-            // Retrieve the user by email
             $user = User::where('email', $request->email)->first();
 
             if (! $user) {
                 return response()->json([
                     'status'  => false,
+                    'data'=>[],
                     'message' => 'Invalid Email or Password',
-                ], 401);
+                ]);
             }
 
-            // Check if the user's OTP is not null
+        
             if ($user->otp !== null) {
                 return response()->json([
                     'status'  => false,
+                    'data'=>[],
                     'message' => 'Your OTP is not verified. Please verify your OTP first.',
-                ], 401);
+                ]);
             }
 
-            // $otp = rand(1000, 9999);
-            // $otp        = str_pad((string) $otp_number, 4, '0', STR_PAD_LEFT);
-
-            // Verify the password
+          
             if (! Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'status'  => false,
+                    'data'=>[],
                     'message' => 'Invalid Email or Password',
-                ], 401);
+                ]);
             }
 
-            // Create a token for the authenticated user
+       
             $token = $user->createToken('API Token')->plainTextToken;
 
             return response()->json([
                 'status'     => true,
                 'token'      => $token,
+                'data'=>[],
                 'token_type' => 'Bearer',
                 'message'    => 'Login successful',
                 'user'       => $user,
-            ], 200);
+            ]);
         } catch (\Exception $e) {
             // Handle any unexpected errors
             return response()->json([
                 'status'  => false,
-                'message' => 'An error occurred during the login process.',
+                'data'=>[],
                 'error'   => $e->getMessage(),
-            ], 500);
+            ]);
         }
     }
 
@@ -257,6 +258,6 @@ class AuthController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Logout successful',
-        ], 200);
+        ]);
     }
 }

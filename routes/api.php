@@ -18,7 +18,7 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 Route::post('/signup', [AuthController::class, 'signup']);
 
 
-Route::get('/otp-verification',[AuthController::class,'otpVerification']);
+Route::post('/otp-verification',[AuthController::class,'otpVerification']);
 
 
 
@@ -34,27 +34,27 @@ Route::post('/forgot_password',[AuthController::class,'forgotPassword']);
 // Authenticated Routes (using Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     
-    // Admin Routes
+  ############### Admin Routes ##################
     Route::middleware('role_id:1')->group(function () {
         Route::get('admin/dashboard', function() {
             return response()->json(['message' => 'Admin Dashboard']);
         });
     });
 
-    // Vendor Routes
+   ################ Vendor Routes ######################3
     Route::middleware('role_id:2')->group(function () {
         Route::get('vendor/dashboard', function() {
             return response()->json(['message' => 'Vendor Dashboard']);
         });
     });
 
-    // User Routes
+   ###################### User Routes #########################3
     Route::middleware('role_id:3')->group(function () {
         Route::get('user/dashboard', function() {
             return response()->json(['message' => 'User Dashboard']);
         });
     });
 
-    // Logout Route
+    ################ Logout Route ############################33
     Route::post('/logout',[AuthController::class,'logout']);
 });
