@@ -21,7 +21,6 @@ class OtpMail extends Mailable
         $this->viewName = $viewName;
         $this->subject = $subject;
     }
-
     public function build()
     {
         return $this->subject($this->subject)

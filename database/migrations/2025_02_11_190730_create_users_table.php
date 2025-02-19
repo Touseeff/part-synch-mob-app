@@ -18,8 +18,9 @@ return new class extends Migration {
             $table->string('last_name')->nullable();
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('web_type',50)->nullable();
+            $table->string('web_token',50)->nullable();
             $table->string('token',20)->nullable();
+            $table->string('otp',100)->nullable();
             $table->string('phone_number', 20)->nullable();
             $table->text('address')->nullable();
             $table->string('city', 200)->nullable();

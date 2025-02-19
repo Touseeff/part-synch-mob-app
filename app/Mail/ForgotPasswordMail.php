@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -15,9 +17,12 @@ class ForgotPasswordMail extends Mailable
      * Create a new message instance.
      */
 
-    public function __construct()
+     public $user;
+     public $new_password;
+    public function __construct($user,$new_password)
     {
-        //
+        $this->user = $user;
+        $this->new_password = $new_password;
     }
 
     /**
@@ -36,7 +41,7 @@ class ForgotPasswordMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            view: 'Mails.forgot_password',
         );
     }
 
